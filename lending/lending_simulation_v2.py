@@ -35,12 +35,14 @@ def main(n_recommenders, n_borrowers, budget, c, pct_dishonest, \
             (1-alpha)*np.random.random((n_recommenders, n_borrowers)) #recommender beliefs - |N| x |M|
     '''
     mechanism = 'vcg_scoring' #'truncated_winkler', 'vcg_scoring'
-    shift = beta.rvs(1, 5, size=n_recommenders)*.5 #The upward bias of each recommender
+    shift_a = 10**-3
+    shift_b = 10**9
+    shift = beta.rvs(shift_a, shift_b, size=n_recommenders)*.5 #The upward bias of each recommender
     rec_accuracy_weight_vector = gamma.rvs(a = rec_alpha_plus_beta*2, scale = .5,\
                 size=n_recommenders) #Total weight alpha + beta to use in the beta distribution of recommender beliefs
-    n_rounds = 10
+    n_rounds = 1
     mean_repayment_prob = mean_borrower_repayment #alpha / (alpha + beta) for beta distribution
-    borrower_alpha_plus_beta = 5 #18 = Fit from Uganda recommendations data. alpha + beta for beta distribution of repayment probs. Higher values will concentrate probs around the mean
+    borrower_alpha_plus_beta = 9.9 #9.9 = Fit from Uganda recommendations data. alpha + beta for beta distribution of repayment probs. Higher values will concentrate probs around the mean
 
 
     #0.1 Honesty Parameters
@@ -58,7 +60,7 @@ def main(n_recommenders, n_borrowers, budget, c, pct_dishonest, \
         #Random Collusion: each borrower will independently at random become a colluder with prob pct_dishonest
         misreporting_recommenders = np.where(np.random.random(n_recommenders) < \
                     pct_dishonest, 1, 0)
-        print('misreporting_recommenders: ', misreporting_recommenders)
+        #print('misreporting_recommenders: ', misreporting_recommenders)
 
     #0.3 Creating lists where round-by-round data will be stored
     n_loans_made = []
@@ -78,18 +80,16 @@ def main(n_recommenders, n_borrowers, budget, c, pct_dishonest, \
                     np.max(np.multiply(weights, misreporting_recommenders)) < .01):
             rounds_to_low_wts_for_dishonest_recs = i #means that no dishonest recommenders have a weight above the threshold during the i+1th round of lending observations
 
+
         #1 Borrow Prob and Recommender Belief Creation
         repayment_probs = beta.rvs(mean_repayment_prob*borrower_alpha_plus_beta,\
                     borrower_alpha_plus_beta*(1-mean_repayment_prob), size=n_borrowers) #True repayment probability for each borrower
-
         central_probs = np.clip(np.tile(repayment_probs, (n_recommenders,1)) + \
                         np.tile(shift, (n_borrowers,1)).T, .01, .99)
-
         alphas = np.multiply(central_probs, np.tile(rec_accuracy_weight_vector,\
                     (n_borrowers,1)).T)
         betas = np.tile(rec_accuracy_weight_vector,\
                     (n_borrowers,1)).T - alphas
-
         p = beta.rvs(alphas, betas, size=(n_recommenders, n_borrowers))
 
 
@@ -132,6 +132,7 @@ def main(n_recommenders, n_borrowers, budget, c, pct_dishonest, \
                 else:
                     p_hat[:,j] = np.where(misreporting_recommenders == 1, 0, p_hat[:,j])
 
+
         #3 Repayment and Recommender Compensation Calculation
         if mechanism == 'truncated_winkler':
                     expected_payout, actual_payout, lending_decisions, \
@@ -141,6 +142,7 @@ def main(n_recommenders, n_borrowers, budget, c, pct_dishonest, \
                     expected_payout, actual_payout, lending_decisions, \
                     repayment_outcomes = vcg(p, p_hat, \
                     repayment_probs, budget, c, weights)
+
 
         #4 Data Calculation & Storage
         if mechanism == 'truncated_winkler': comp_by_recommender = np.sum(actual_payout, axis=1)
@@ -162,7 +164,7 @@ def main(n_recommenders, n_borrowers, budget, c, pct_dishonest, \
             multi_round_outcomes = np.hstack((multi_round_outcomes,repayment_outcomes))
 
     #string of parameter settings to pass for storage with results
-    params = mechanism +','+ '1 5' +','+ honesty_type	+','+ str(frac_misreports)\
+    params = mechanism +','+ '%f_%f' % (shift_a, shift_b) +','+ honesty_type	+','+ str(frac_misreports)\
                 +','+ str(frac_misreports_1) +','+ str(n_rounds)
 
     return np.asarray(n_loans_made), np.asarray(n_repayments), \
@@ -347,27 +349,15 @@ def brier(preds, outcomes):
 
 
 ##### CODE TO RUN THE SIMULATION #####
-n_recommenders_values = [1,2,3,4,5,6,7,8,9,10] + [6]*30 #10 unique values
-pct_dishonest_values = [0]*10 + [0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1] + [0]*19 #11 unique values
-rec_alpha_plus_beta_values = [10]*21 + [2,4,6,8,10,12,15,20,30,50] + [10]*9 #10 unique values
-mean_borrower_repayment_values = [.8]*31 + [.1,.2,.3,.4,.5,.6,.7,.8,.9] #9 unique values
-
-'''
-n_recommenders_values = [10]*11
-pct_dishonest_values = [0,.1,.2,.3,.4,.5,.6,.7,.8,.9,1]
-rec_alpha_plus_beta_values = [10]*11
-mean_borrower_repayment_values = [.6]*11
-'''
-
-n_recommenders_values = [5]*5
-pct_dishonest_values = [0]*5
-rec_alpha_plus_beta_values = [10]*5
-mean_borrower_repayment_values = [.5, .6, .7, .8, .9]
+n_recommenders_values = list(np.arange(21, 41))
+pct_dishonest_values = [0]*20
+rec_alpha_plus_beta_values = [12.74]*20
+mean_borrower_repayment_values = [.85]*20
 
 
 for iter in range(len(pct_dishonest_values)):
     print('Iteration: ', iter)
-    reps = 100 #Run the simulation 'reps' times to average across noise
+    reps = 10**4 #Run the simulation 'reps' times to average across noise
 
     for k in range(reps):
         #print('Rep: ',k)
@@ -375,7 +365,7 @@ for iter in range(len(pct_dishonest_values)):
         n_recommenders = n_recommenders_values[iter]
         n_borrowers = 20
         budget = 3 #Maximum number of borrowers who can receive a loan
-        c = .9 #Lending threshold rating
+        c = .85 #Lending threshold rating
         pct_dishonest = pct_dishonest_values[iter] #percent of recommenders who are dishonest
         rec_alpha_plus_beta = rec_alpha_plus_beta_values[iter] #tightness of recommender knowledge in a beta distribution. Higher = better knowledge. When this parameter is 10, assuming 5 alpha and 5 beta, the std dev of the recommender knowledge is .15
         mean_borrower_repayment = mean_borrower_repayment_values[iter]
@@ -408,15 +398,20 @@ for iter in range(len(pct_dishonest_values)):
     print('rec_comp_negative_pct',np.round(np.mean(rec_comp_negative_pct_array),2))
     print('rounds_to_low_wts_for_dishonest_recs',np.round(np.mean(rounds_to_low_wts_for_dishonest_recs_list),2))
 
+    # Calculate lender profit with 20% interest
+    profit_array = 1.2 * n_repayments_array - n_loans_array
+    print('profit_array', np.mean(profit_array))
+
     row = '\n' + str(time.strftime('%Y%m%d')) +','+ str(n_recommenders) +','+ \
                 str(n_borrowers) +','+ str(budget) +','+ str(c) +','+ str(pct_dishonest)\
                  +','+ str(rec_alpha_plus_beta) +','+ str(mean_borrower_repayment) \
-                 +','+ params +','+ str(reps) +','+ str(np.round(np.mean(n_loans_array),2))\
-                 +','+ str(np.round(np.sum(n_repayments_array) / np.sum(n_loans_array),2))\
-                 +','+ str(np.round(np.mean(mean_recommender_comp_array),2)) +','+\
-                 str(np.round(np.nanmean(rec_comp_vol_array),2)) +','+ \
-                 str(np.round(np.mean(rec_comp_negative_pct_array),2)) +','+\
-                 str(np.round(np.mean(rounds_to_low_wts_for_dishonest_recs_list),2))
+                 +','+ params +','+ str(reps) +','+ str(np.round(np.mean(n_loans_array),3))\
+                 +','+ str(np.round(np.sum(n_repayments_array) / np.sum(n_loans_array),3))\
+                 +','+ str(np.round(np.mean(mean_recommender_comp_array),3)) +','+\
+                 str(np.round(np.nanmean(rec_comp_vol_array),3)) +','+ \
+                 str(np.round(np.mean(rec_comp_negative_pct_array),3)) +','+\
+                 str(np.round(np.mean(rounds_to_low_wts_for_dishonest_recs_list),3)) +','+\
+                 str(np.round(np.mean(profit_array / budget),3)) # Profit divided by budget
 
     with open('lending_simulation_results.csv','a') as fd:
         fd.write(row)
