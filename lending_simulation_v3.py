@@ -349,10 +349,10 @@ def brier(preds, outcomes):
 
 
 ##### CODE TO RUN THE SIMULATION #####
-n_recommenders_values = list(np.arange(21, 41))
+n_recommenders_values = list(np.arange(1, 21))
 pct_dishonest_values = [0]*20
 rec_alpha_plus_beta_values = [12.74]*20
-mean_borrower_repayment_values = [.85]*20
+mean_borrower_repayment_values = [.5]*20
 
 
 for iter in range(len(pct_dishonest_values)):

@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import os
 
 def plot_from_csv(file_path, x_column, y_column, n, filter_column=None, title=None, x_label=None, y_label=None):
     # Read the CSV file
@@ -20,16 +21,26 @@ def plot_from_csv(file_path, x_column, y_column, n, filter_column=None, title=No
         plt.plot(df[x_column], df[y_column], label=y_column)
     
     # Set labels and title, using provided values if they are not None
-    plt.xlabel(x_label if x_label else x_column)
-    plt.ylabel(y_label if y_label else y_column)
-    plt.title(title if title else f'{y_column} vs {x_column}')
+    x_label_text = x_label if x_label else x_column
+    y_label_text = y_label if y_label else y_column
+    title_text = title if title else f'{y_column} vs {x_column}'
+    
+    plt.xlabel(x_label_text)
+    plt.ylabel(y_label_text)
+    plt.title(title_text)
     
     plt.grid(True)
+    
+    # Save the plot as a .png file in the 'charts' directory
+    # Replace spaces with underscores and make the title filename-friendly
+    filename = title_text.replace(' ', '_') + '.png'
+    plt.savefig(os.path.join('charts', filename))
+
     plt.show()
 
 # Example usage:
-n_samples = 20
+n_samples = 40
 x_column = 'n_rec'
-y_column = 'repayment' #'n_loans' #'profit_divided_by_budget'
-filter_column = None
-plot_from_csv('lending_simulation_results.csv', x_column, y_column, n_samples, filter_column)
+y_column = 'repayment'
+filter_column = 'mean_borrower_rpmt'
+plot_from_csv('lending_simulation_results.csv', x_column, y_column, n_samples, filter_column, title="Repayment Rate vs Number of Recommenders", x_label="Number of Recommenders", y_label="Repayment Rate")
