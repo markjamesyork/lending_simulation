@@ -45,8 +45,8 @@ def plot_from_csv(file_path, x_column, y_column, n, filter_columns=None, title=N
     plt.show()
 
 # Example usage:
-n_samples = 40
+n_samples = 60
 x_column = 'n_rec'
-y_column = 'profit_divided_by_budget'
-filter_columns = ['mean_borrower_rpmt', 'another_filter_column'] # Add the list of filter columns
-plot_from_csv('lending_simulation_results.csv', x_column, y_column, n_samples, filter_columns, title="Profit vs Recommendations", x_label="Number of Recommendations", y_label="Profit Divided by Budget")
+y_column = 'repayment'
+filter_columns = ['collusion_type'] # Add the list of filter columns
+plot_from_csv('lending_simulation_results.csv', x_column, y_column, n_samples, filter_columns, title='Repayment Rate vs. Number of Recommenders', x_label="Number of Recommenders", y_label='Repayment Rate')
